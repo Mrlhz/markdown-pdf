@@ -1,0 +1,17 @@
+{
+  "name": "markdown-pdf",
+  "version": "1.0.0",
+  "description": "This extension converts Markdown files to pdf, html, png or jpeg files.",
+  "main": "index.js",
+  "repository": "git@github.com:Mrlhz/markdown-pdf.git",
+  "author": "mrlhz <mr__lhz@163.com>",
+  "license": "MIT",
+  "dependencies": {
+    "fs-extra": "^10.1.0",
+    "highlight.js": "^11.5.1",
+    "markdown-it": "^13.0.1",
+    "mustache": "^4.2.0",
+    "puppeteer-core": "^15.1.1",
+    "vscode-uri": "^3.0.3"
+  }
+}
