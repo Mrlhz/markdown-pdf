@@ -332,10 +332,10 @@
       "default": "http://www.plantuml.com/plantuml",
       "description": "plantuml server"
     },
-    "StatusbarMessageTimeout": {
+    "timeout": {
       "type": "number",
-      "default": 10000,
-      "description": "Statusbar message timeout [milliseconds]"
+      "default": 0,
+      "description": "跳转等待时间，单位是毫秒, 默认是30秒, 传 0 表示无限等待。可以通过page.setDefaultNavigationTimeout(timeout)方法修改默认值"
     },
     "markdown-it-include.enable": {
       "type": "boolean",

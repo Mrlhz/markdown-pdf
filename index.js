@@ -258,13 +258,13 @@ function exportHtml(data, filename) {
  * export a html to a pdf file (html-pdf)
  */
 async function exportPdf(data, filename, type, uri) {
-  var StatusbarMessageTimeout = getConfiguration('StatusbarMessageTimeout')
+  const timeout = getConfiguration('timeout')
   var exportFilename = path.resolve(__dirname, './sample', filename) // getOutputDir(filename, uri)
   try {
     // export html
     if (type == 'html') {
       exportHtml(data, exportFilename)
-      console.log('$(markdown) ' + exportFilename, StatusbarMessageTimeout)
+      console.log('$(markdown) ', { exportFilename, timeout })
       return
     }
 
@@ -272,7 +272,7 @@ async function exportPdf(data, filename, type, uri) {
     var f = path.parse(filename)
     var tmpfilename = path.join(f.dir, f.name + '_tmp.html')
     exportHtml(data, tmpfilename)
-    var options = {
+    const options = {
       executablePath: getConfiguration('executablePath') || puppeteer.executablePath(),
       args: ['--lang=zh-cn', '--no-sandbox', '--disable-setuid-sandbox'],
       headless: true // must
@@ -282,7 +282,7 @@ async function exportPdf(data, filename, type, uri) {
     const browser = await puppeteer.launch(options)
     const page = await browser.newPage()
     console.log(vscodeUri.file(tmpfilename).toString(), exportFilename)
-    await page.goto(vscodeUri.file(path.resolve(__dirname, tmpfilename)).toString(), { waitUntil: 'networkidle0' })
+    await page.goto(vscodeUri.file(path.resolve(__dirname, tmpfilename)).toString(), { waitUntil: 'networkidle0', timeout })
     // await page.addStyleTag({
     //   path: path.resolve(__dirname, './styles/markdown.css')
     // })
@@ -309,7 +309,7 @@ async function exportPdf(data, filename, type, uri) {
       } else {
         landscape_option = false;
       }
-      var options = {
+      const pdfOptions = {
         path: exportFilename,
         scale: getConfiguration('scale', uri),
         displayHeaderFooter: getConfiguration('displayHeaderFooter', uri),
@@ -329,7 +329,7 @@ async function exportPdf(data, filename, type, uri) {
           left: getConfiguration('margin.left', uri) || ''
         }
       }
-      await page.pdf(options);
+      await page.pdf(pdfOptions);
     }
 
     // generate png and jpeg
@@ -349,9 +349,9 @@ async function exportPdf(data, filename, type, uri) {
       var clip_y_option = vscode.workspace.getConfiguration('markdown-pdf')['clip']['y'] || null;
       var clip_width_option = vscode.workspace.getConfiguration('markdown-pdf')['clip']['width'] || null;
       var clip_height_option = vscode.workspace.getConfiguration('markdown-pdf')['clip']['height'] || null;
-      var options;
+      let screenshotOptions;
       if (clip_x_option !== null && clip_y_option !== null && clip_width_option !== null && clip_height_option !== null) {
-        options = {
+        screenshotOptions = {
           path: exportFilename,
           quality: quality_option,
           fullPage: false,
@@ -364,14 +364,14 @@ async function exportPdf(data, filename, type, uri) {
           omitBackground: vscode.workspace.getConfiguration('markdown-pdf')['omitBackground'],
         }
       } else {
-        options = {
+        screenshotOptions = {
           path: exportFilename,
           quality: quality_option,
           fullPage: true,
           omitBackground: vscode.workspace.getConfiguration('markdown-pdf')['omitBackground'],
         }
       }
-      await page.screenshot(options);
+      await page.screenshot(screenshotOptions);
     }
 
     // await page.close();
@@ -385,7 +385,7 @@ async function exportPdf(data, filename, type, uri) {
       }
     }
 
-    console.log('$(markdown) ' + exportFilename, StatusbarMessageTimeout);
+    console.log('$(markdown) end: ' + exportFilename, timeout);
   } catch (error) {
     console.log('exportPdf()', error);
   }
@@ -398,7 +398,7 @@ function convertImgPath(src, filename) {
           .replace(/\\/g, '/')
           .replace(/#/g, '%23');
     var protocol = url.parse(href).protocol;
-    if (protocol === 'file:' && href.indexOf('file:///') !==0) {
+    if (protocol === 'file:' && href.indexOf('file:///') !== 0) {
       return href.replace(/^file:\/\//, 'file:///');
     } else if (protocol === 'file:') {
       return href;
