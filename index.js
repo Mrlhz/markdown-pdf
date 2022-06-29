@@ -2,23 +2,16 @@
 
 const fs = require('fs-extra')
 const path = require('path')
-const url = require('url')
-const os = require('os')
 
 const puppeteer = require('puppeteer-core')
-const hljs = require('highlight.js')
-const cheerio = require('cheerio')
 const mustache = require('mustache')
-const grayMatter = require('gray-matter')
 const vscodeUri = require('vscode-uri').URI
 
-const { executablePath, defaultViewport, ignoreHTTPSErrors } = require('./app/config/index')
+const { convertMarkdownToHtml } = require('./app/core/convert-markdown-to-html')
 const {
-  Slug,
   readFile,
   getText,
   getConfiguration,
-  setBooleanValue,
   readStyles
 } = require('./app/utils/index')
 
@@ -66,148 +59,6 @@ async function markdownPdf(type, options) {
 
   } catch (error) {
     console.log('markdownPdf()', error)
-  }
-}
-
-/*
- * convert markdown to html (markdown-it)
- */
-function convertMarkdownToHtml(filename, type, text) {
-  var matterParts = grayMatter(text)
-
-  try {
-    try {
-      var breaks = setBooleanValue(matterParts.data.breaks, getConfiguration('breaks'))
-      var md = require('markdown-it')({
-        html: true,
-        breaks: breaks,
-        highlight: function (str, lang) {
-          if (lang && lang.match(/\bmermaid\b/i)) {
-            return `<div class="mermaid">${str}</div>`
-          }
-          if (lang && hljs.getLanguage(lang)) {
-            try {
-              str = hljs.highlight(str, { language: lang }).value
-            } catch (error) {
-              str = md.utils.escapeHtml(str)
-
-              console.log('markdown-it:highlight', error)
-            }
-          } else {
-            str = md.utils.escapeHtml(str)
-          }
-          return '<pre class="hljs"><code><div>' + str + '</div></code></pre>'
-        }
-      })
-    } catch (error) {
-      console.log('require(\'markdown-it\')', error)
-    }
-
-  // convert the img src of the markdown
-  var defaultRender = md.renderer.rules.image
-  md.renderer.rules.image = function (tokens, idx, options, env, self) {
-    var token = tokens[idx]
-    var href = token.attrs[token.attrIndex('src')][1]
-    // console.log("original href: " + href);
-    if (type === 'html') {
-      href = decodeURIComponent(href).replace(/("|')/g, '')
-    } else {
-      href = convertImgPath(href, filename)
-    }
-    // console.log("converted href: " + href);
-    token.attrs[token.attrIndex('src')][1] = href
-    // // pass token to default renderer.
-    return defaultRender(tokens, idx, options, env, self)
-  };
-
-  if (type !== 'html') {
-    // convert the img src of the html
-    md.renderer.rules.html_block = function (tokens, idx) {
-      var html = tokens[idx].content;
-      var $ = cheerio.load(html);
-      $('img').each(function () {
-        var src = $(this).attr('src');
-        var href = convertImgPath(src, filename);
-        $(this).attr('src', href);
-      });
-      return $.html();
-    };
-  }
-
-  // checkbox
-  md.use(require('markdown-it-checkbox'));
-
-  // emoji
-  var emoji_f = setBooleanValue(matterParts.data.emoji, getConfiguration('emoji'))
-  if (emoji_f) {
-    var emojies_defs = require(path.join(__dirname, 'data', 'emoji.json'))
-    try {
-      var options = {
-        defs: emojies_defs
-      };
-    } catch (error) {
-      statusbarmessage.dispose();
-      console.log('markdown-it-emoji:options', error);
-    }
-    md.use(require('markdown-it-emoji'), options);
-    md.renderer.rules.emoji = function (token, idx) {
-      var emoji = token[idx].markup;
-      var emojipath = path.join(__dirname, 'node_modules', 'emoji-images', 'pngs', emoji + '.png');
-      var emojidata = readFile(emojipath, null).toString('base64');
-      if (emojidata) {
-        return '<img class="emoji" alt="' + emoji + '" src="data:image/png;base64,' + emojidata + '" />';
-      } else {
-        return ':' + emoji + ':';
-      }
-    };
-  }
-
-  // toc
-  // https://github.com/leff/markdown-it-named-headers
-  var options = {
-    slugify: Slug
-  }
-  md.use(require('markdown-it-named-headers'), options);
-
-  // markdown-it-container
-  // https://github.com/markdown-it/markdown-it-container
-  md.use(require('markdown-it-container'), '', {
-    validate: function (name) {
-      return name.trim().length;
-    },
-    render: function (tokens, idx) {
-      if (tokens[idx].info.trim() !== '') {
-        return `<div class="${tokens[idx].info.trim()}">\n`;
-      } else {
-        return `</div>\n`;
-      }
-    }
-  });
-
-  // PlantUML
-  // https://github.com/gmunguia/markdown-it-plantuml
-  var plantumlOptions = {
-    openMarker: matterParts.data.plantumlOpenMarker || getConfiguration('plantumlOpenMarker') || '@startuml',
-    closeMarker: matterParts.data.plantumlCloseMarker || getConfiguration('plantumlCloseMarker') || '@enduml',
-    server: getConfiguration('plantumlServer') || ''
-  }
-  md.use(require('markdown-it-plantuml'), plantumlOptions);
-
-  // markdown-it-include
-  // https://github.com/camelaissani/markdown-it-include
-  // the syntax is :[alt-text](relative-path-to-file.md)
-  // https://talk.commonmark.org/t/transclusion-or-including-sub-documents-for-reuse/270/13
-  if (getConfiguration('markdown-it-include.enable')) {
-    md.use(require("markdown-it-include"), {
-      root: path.dirname(filename),
-      includeRe: /:\[.+\]\((.+\..+)\)/i
-    });
-  }
-
-  return md.render(matterParts.content);
-
-  } catch (error) {
-    console.log('convertMarkdownToHtml()', error);
   }
 }
 
@@ -381,40 +232,12 @@ async function exportPdf(data, filename, type, uri) {
     var debug = getConfiguration('debug') || false;
     if (!debug) {
       if (fs.pathExistsSync(tmpfilename)) {
-        // fs.removeSync(tmpfilename)
+        fs.removeSync(tmpfilename)
       }
     }
 
     console.log('$(markdown) end: ' + exportFilename, timeout);
   } catch (error) {
     console.log('exportPdf()', error);
-  }
-}
-
-function convertImgPath(src, filename) {
-  try {
-    var href = decodeURIComponent(src);
-    href = href.replace(/("|')/g, '')
-          .replace(/\\/g, '/')
-          .replace(/#/g, '%23');
-    var protocol = url.parse(href).protocol;
-    if (protocol === 'file:' && href.indexOf('file:///') !== 0) {
-      return href.replace(/^file:\/\//, 'file:///');
-    } else if (protocol === 'file:') {
-      return href;
-    } else if (!protocol || path.isAbsolute(href)) {
-      href = path.resolve(path.dirname(filename), href).replace(/\\/g, '/').replace(/#/g, '%23');
-      if (href.indexOf('//') === 0) {
-        return 'file:' + href;
-      } else if (href.indexOf('/') === 0) {
-        return 'file://' + href;
-      } else {
-        return 'file:///' + href;
-      }
-    } else {
-      return src;
-    }
-  } catch (error) {
-    console.log('convertImgPath()', error);
   }
 }

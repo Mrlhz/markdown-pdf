@@ -16,7 +16,7 @@ function setBooleanValue(a, b) {
 
 function Slug(string) {
   try {
-    var stg = encodeURI(
+    const stg = encodeURI(
       string.trim()
             .toLowerCase()
             .replace(/\s+/g, '-') // Replace whitespace with -
@@ -56,7 +56,7 @@ function isDirectory(pathLike, ...args) {
 
 function makeCss(filename) {
   try {
-    var css = readFile(filename)
+    const css = readFile(filename)
     if (css) {
       return `\n<style>\n${css}\n</style>\n`
     } else {
@@ -85,12 +85,11 @@ function readStyles(uri) {
     // 2. read the style of the markdown.styles setting.
 
     // 3. read the style of the highlight.js.
-    var highlightStyle = getConfiguration('highlightStyle') || ''
-    var ishighlight = getConfiguration('highlight')
-    console.log('ishighlight', ishighlight)
+    const highlightStyle = getConfiguration('highlightStyle') || ''
+    const ishighlight = getConfiguration('highlight')
     if (ishighlight) {
       if (highlightStyle) {
-        var css = getConfiguration('highlightStyle') || 'github.css'
+        const css = getConfiguration('highlightStyle') || 'github.css'
         filename = path.join(workspace, 'node_modules', 'highlight.js', 'styles', css)
       } else {
         filename = path.join(stylesPath, 'tomorrow.css');
@@ -105,7 +104,7 @@ function readStyles(uri) {
     }
 
     // 5. read the style of the markdown-pdf.styles settings.
-    fs.outputFileSync(`${filename}_${Date.now()}.html`, stylesList.join(''))
+    // fs.outputFileSync(`${filename}_${Date.now()}.html`, stylesList.join(''))
 
     return stylesList.join('');
   } catch (error) {
