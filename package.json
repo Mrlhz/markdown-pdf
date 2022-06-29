@@ -21,10 +21,8 @@
     "markdown-it-include": "^2.0.0",
     "markdown-it-named-headers": "^0.0.4",
     "markdown-it-plantuml": "^1.4.1",
-    "mkdirp": "^1.0.4",
     "mustache": "^4.2.0",
     "puppeteer-core": "^15.1.1",
-    "rimraf": "^3.0.2",
     "vscode-uri": "^3.0.3"
   }
 }

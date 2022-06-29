@@ -13,7 +13,14 @@ const grayMatter = require('gray-matter')
 const vscodeUri = require('vscode-uri').URI
 
 const { executablePath, defaultViewport, ignoreHTTPSErrors } = require('./app/config/index')
-const { Slug, fixHref, readFile, deleteFile, getText, getConfiguration, setBooleanValue, sleep } = require('./app/utils/index')
+const {
+  Slug,
+  readFile,
+  getText,
+  getConfiguration,
+  setBooleanValue,
+  readStyles
+} = require('./app/utils/index')
 
 module.exports = {
   activate
@@ -24,7 +31,6 @@ async function activate({ pathLike, output }) {
   const tasks = filesPath.map(item => markdownPdf('pdf', { uri: item.path, output: item.output }))
   const result = await Promise.allSettled(tasks)
   console.log(result, filesPath)
-  // await markdownPdf('pdf', { uri: path.resolve(__dirname, './sample/readme.md') })
 }
 
 function init({ pathLike, ext, output }) {
@@ -55,7 +61,7 @@ async function markdownPdf(type, options) {
     var text = getText(uri)
     var content = convertMarkdownToHtml(mdfilename, type, text)
     var html = makeHtml(content, uri)
-    console.log(filename, type, uri, ext)
+    console.log({filename, type, uri, ext})
     await exportPdf(html, filename, type, uri)
 
   } catch (error) {
@@ -81,7 +87,7 @@ function convertMarkdownToHtml(filename, type, text) {
           }
           if (lang && hljs.getLanguage(lang)) {
             try {
-              str = hljs.highlight(lang, str, true).value
+              str = hljs.highlight(str, { language: lang }).value
             } catch (error) {
               str = md.utils.escapeHtml(str)
 
@@ -211,8 +217,7 @@ function convertMarkdownToHtml(filename, type, text) {
 function makeHtml(data, uri) {
   try {
     // read styles
-    var style = '';
-    style += readStyles(uri);
+    const style = readStyles(uri);
 
     // get title
     var title = path.basename(uri);
@@ -223,11 +228,9 @@ function makeHtml(data, uri) {
 
     // read mermaid javascripts
     var mermaidServer = getConfiguration('mermaidServer') || '';
-    var mermaid = '<script src=\"' + mermaidServer + '\"></script>';
+    const mermaid = `<script src="${mermaidServer}"></script>`;
 
     // compile template
-    var mustache = require('mustache');
-
     var view = {
       title: title,
       style: style,
@@ -244,12 +247,11 @@ function makeHtml(data, uri) {
  * export a html to a html file
  */
 function exportHtml(data, filename) {
-  fs.writeFile(filename, data, 'utf-8', function (error) {
-    if (error) {
-      console.log('exportHtml()', error)
-      return;
-    }
-  });
+  try {
+    fs.outputFileSync(filename, data, { encoding: 'utf-8' })
+  } catch (error) {
+    console.log('exportHtml()', error)
+  }
 }
 
 /*
@@ -281,6 +283,15 @@ async function exportPdf(data, filename, type, uri) {
     const page = await browser.newPage()
     console.log(vscodeUri.file(tmpfilename).toString(), exportFilename)
     await page.goto(vscodeUri.file(path.resolve(__dirname, tmpfilename)).toString(), { waitUntil: 'networkidle0' })
+    // await page.addStyleTag({
+    //   path: path.resolve(__dirname, './styles/markdown.css')
+    // })
+    // await page.addStyleTag({
+    //   path: path.resolve(__dirname, './styles/markdown-pdf.css')
+    // })
+    // await page.addStyleTag({
+    //   path: path.resolve(__dirname, './node_modules/highlight.js/styles/monokai-sublime.css')
+    // })
     // generate pdf
     // https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#pagepdfoptions
     if (type == 'pdf') {
@@ -370,7 +381,7 @@ async function exportPdf(data, filename, type, uri) {
     var debug = getConfiguration('debug') || false;
     if (!debug) {
       if (fs.pathExistsSync(tmpfilename)) {
-        deleteFile(tmpfilename);
+        // fs.removeSync(tmpfilename)
       }
     }
 
@@ -405,80 +416,5 @@ function convertImgPath(src, filename) {
     }
   } catch (error) {
     console.log('convertImgPath()', error);
-  }
-}
-
-function makeCss(filename) {
-  try {
-    var css = readFile(filename)
-    if (css) {
-      return '\n<style>\n' + css + '\n</style>\n'
-    } else {
-      return ''
-    }
-  } catch (error) {
-    console.log('makeCss()', error)
-  }
-}
-
-function readStyles(uri) {
-  try {
-    var includeDefaultStyles;
-    var style = '';
-    var styles = '';
-    var filename = '';
-    var i;
-
-    includeDefaultStyles = getConfiguration('includeDefaultStyles');
-
-    // 1. read the style of the vscode.
-    if (includeDefaultStyles) {
-      filename = path.join(__dirname, 'styles', 'markdown.css');
-      style += makeCss(filename);
-    }
-
-    // 2. read the style of the markdown.styles setting.
-    if (includeDefaultStyles) {
-      styles = getConfiguration('styles')
-      if (styles && Array.isArray(styles) && styles.length > 0) {
-        for (i = 0; i < styles.length; i++) {
-          var href = fixHref(uri, styles[i]);
-          style += '<link rel=\"stylesheet\" href=\"' + href + '\" type=\"text/css\">';
-        }
-      }
-    }
-
-    // 3. read the style of the highlight.js.
-    var highlightStyle = getConfiguration('highlightStyle') || ''
-    var ishighlight = getConfiguration('highlight')
-    if (ishighlight) {
-      if (highlightStyle) {
-        var css = getConfiguration('highlightStyle') || 'github.css'
-        filename = path.join(__dirname, 'node_modules', 'highlight.js', 'styles', css)
-        style += makeCss(filename);
-      } else {
-        filename = path.join(__dirname, 'styles', 'tomorrow.css');
-        style += makeCss(filename);
-      }
-    }
-
-    // 4. read the style of the markdown-pdf.
-    if (includeDefaultStyles) {
-      filename = path.join(__dirname, 'styles', 'markdown-pdf.css');
-      style += makeCss(filename);
-    }
-
-    // 5. read the style of the markdown-pdf.styles settings.
-    styles = getConfiguration('styles') || '';
-    if (styles && Array.isArray(styles) && styles.length > 0) {
-      for (i = 0; i < styles.length; i++) {
-        var href = fixHref(uri, styles[i]);
-        style += '<link rel=\"stylesheet\" href=\"' + href + '\" type=\"text/css\">';
-      }
-    }
-
-    return style;
-  } catch (error) {
-    console.log('readStyles()', error);
   }
 }

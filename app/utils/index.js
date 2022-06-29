@@ -1,5 +1,7 @@
-const fs = require('fs')
+const fs = require('fs-extra')
 const path = require('path')
+
+const { statSync } = fs
 
 const { properties } = require('../config/configuration.json')
 
@@ -28,48 +30,6 @@ function Slug(string) {
   }
 }
 
-function fixHref(resource, href) {
-  try {
-    if (!href) {
-      return href
-    }
-
-    // Use href if it is already an URL
-    // const hrefUri = vscode.Uri.parse(href)
-    // if (['http', 'https'].indexOf(hrefUri.scheme) >= 0) {
-    //   return hrefUri.toString()
-    // }
-
-    // // Use a home directory relative path If it starts with ^.
-    // if (href.indexOf('~') === 0) {
-    //   return vscode.Uri.file(href.replace(/^~/, os.homedir())).toString()
-    // }
-
-    // // Use href as file URI if it is absolute
-    // if (path.isAbsolute(href)) {
-    //   return vscode.Uri.file(href).toString()
-    // }
-
-    // // Use a workspace relative path if there is a workspace and markdown-pdf.stylesRelativePathFile is false
-    // var stylesRelativePathFile = getConfiguration('stylesRelativePathFile')
-    // let root = vscode.workspace.getWorkspaceFolder(resource)
-    // if (stylesRelativePathFile === false && root) {
-    //   return vscode.Uri.file(path.join(root.uri.fsPath, href)).toString()
-    // }
-
-    // // Otherwise look relative to the markdown file
-    // return vscode.Uri.file(path.join(path.dirname(resource.fsPath), href)).toString()
-    return href
-  } catch (error) {
-    console.log('fixHref()', error)
-  }
-}
-
-function deleteFile (path) {
-  var rimraf = require('rimraf')
-  rimraf.sync(path)
-}
-
 function getConfiguration(key) {
   const property = properties[key]
   if (property) {
@@ -84,6 +44,73 @@ function getText(filePath) {
 
 function readFile(fileName, { encoding = 'utf8' } = {}) {
   return fs.readFileSync(fileName, { encoding })
+}
+
+function isFile(pathLike, ...args) {
+  return statSync(pathLike, ...args).isFile()
+}
+
+function isDirectory(pathLike, ...args) {
+  return statSync(pathLike, ...args).isDirectory()
+}
+
+function makeCss(filename) {
+  try {
+    var css = readFile(filename)
+    if (css) {
+      return `\n<style>\n${css}\n</style>\n`
+    } else {
+      return ''
+    }
+  } catch (error) {
+    console.log('makeCss()', error)
+  }
+}
+
+const stylesPath = path.resolve(__dirname, '../../styles')
+const workspace = path.resolve(__dirname, '../../')
+function readStyles(uri) {
+  console.log({ stylesPath, workspace }, __dirname)
+  try {
+    let filename = '';
+
+    const includeDefaultStyles = getConfiguration('includeDefaultStyles');
+    const stylesList = []
+    // 1. read the style of the vscode.
+    if (includeDefaultStyles) {
+      filename = path.join(stylesPath, 'markdown.css');
+      stylesList.push(makeCss(filename))
+    }
+
+    // 2. read the style of the markdown.styles setting.
+
+    // 3. read the style of the highlight.js.
+    var highlightStyle = getConfiguration('highlightStyle') || ''
+    var ishighlight = getConfiguration('highlight')
+    console.log('ishighlight', ishighlight)
+    if (ishighlight) {
+      if (highlightStyle) {
+        var css = getConfiguration('highlightStyle') || 'github.css'
+        filename = path.join(workspace, 'node_modules', 'highlight.js', 'styles', css)
+      } else {
+        filename = path.join(stylesPath, 'tomorrow.css');
+      }
+      stylesList.push(makeCss(filename))
+    }
+
+    // 4. read the style of the markdown-pdf.
+    if (includeDefaultStyles) {
+      filename = path.join(stylesPath, 'markdown-pdf.css');
+      stylesList.push(makeCss(filename))
+    }
+
+    // 5. read the style of the markdown-pdf.styles settings.
+    fs.outputFileSync(`${filename}_${Date.now()}.html`, stylesList.join(''))
+
+    return stylesList.join('');
+  } catch (error) {
+    console.log('readStyles()', error);
+  }
 }
 
 /**
@@ -104,8 +131,9 @@ module.exports = {
   getConfiguration,
   getText,
   Slug,
-  fixHref,
   readFile,
-  deleteFile,
-  sleep
+  sleep,
+  isFile,
+  isDirectory,
+  readStyles,
 }

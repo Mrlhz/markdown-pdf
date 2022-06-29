@@ -157,7 +157,7 @@
         "xt256.css",
         "zenburn.css"
       ],
-      "default": "",
+      "default": "monokai.css",
       "markdownDescription": "Set the style file name. [highlight.js demo](https://highlightjs.org/static/demo/) [highlight.js/src/styles](https://github.com/highlightjs/highlight.js/tree/master/src/styles)"
     },
     "breaks": {
