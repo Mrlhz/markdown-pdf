@@ -58,25 +58,21 @@ function init({ pathLike, output }) {
 async function activate({ pathLike, output }) {
   const filesPath = init({ pathLike, output })
   // filter
-  
-  console.log(filesPath[0])
-  const len = filesPath.length
+  const filterFiles = filesPath.filter(file => {
+    const { name } = path.parse(file.path)
+    const pdfFile = path.resolve(output, `${name}.pdf`)
+    console.log(pdfFile, fs.existsSync(pdfFile) ? 'Already exists' : 'Not created')
+    return !fs.existsSync(pdfFile)
+  })
+
+  console.log({ filterFiles })
+  const len = filterFiles.length
   for (let index = 0; index < len; index += 10) {
     console.log(index)
-    const filterFiles = filesPath.slice(index, index + 10).filter(file => {
-      const { dir, name } = path.parse(file.path)
-      const pdfFile = path.resolve(output, `${name}.pdf`)
-      console.log(pdfFile, fs.existsSync(pdfFile))
-      return !fs.existsSync(pdfFile)
-    })
-    if (!filterFiles.length) {
-      continue
-    } 
-    const tasks = filterFiles.map(item => markdownPdf('pdf', { uri: item.path, output: item.output }))
+    const tasks = filterFiles.slice(0, index + 10).map(item => markdownPdf('pdf', { uri: item.path, output: item.output }))
     const result = await Promise.allSettled(tasks)
     console.log(`Done: ${result.length}`)
     if (index + 10 < len) {
-      console.log('wait')
       await sleep(5000)
     }
   }
@@ -93,7 +89,7 @@ async function markdownPdf(type, options = {}) {
     var content = convertMarkdownToHtml(mdfilename, type, text)
     var html = makeHtml(content, uri)
     console.log({filename, type, uri, ext})
-    await exportPdf(html, filename, type, uri)
+    await exportPdf(html, filename, type, uri) // TODO
 
   } catch (error) {
     console.log('markdownPdf()', error)
@@ -168,7 +164,7 @@ async function exportPdf(data, filename, type, uri) {
       // Setting Up Chrome Linux Sandbox
       // https://github.com/puppeteer/puppeteer/blob/master/docs/troubleshooting.md#setting-up-chrome-linux-sandbox
     };
-    const browser = await puppeteer.launch(options)
+    const browser = await puppeteer.launch(options) // TODO
     const page = await browser.newPage()
     console.log(vscodeUri.file(tmpfilename).toString(), exportFilename)
     await page.goto(vscodeUri.file(path.resolve(__dirname, tmpfilename)).toString(), { waitUntil: 'networkidle0', timeout })
@@ -263,7 +259,7 @@ async function exportPdf(data, filename, type, uri) {
       await page.screenshot(screenshotOptions);
     }
 
-    // await page.close();
+    await page.close();
     await browser.close();
 
     // delete temporary file
