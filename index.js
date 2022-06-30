@@ -12,27 +12,40 @@ const {
   readFile,
   getText,
   getConfiguration,
-  readStyles
+  readStyles,
+  isDirectory,
+  isFile
 } = require('./app/utils/index')
 
 module.exports = {
-  activate
+  activate,
+  init
 }
 
-async function activate({ pathLike, output }) {
-  const filesPath = init({ pathLike, ext: 'md', output })
-  const tasks = filesPath.map(item => markdownPdf('pdf', { uri: item.path, output: item.output }))
-  const result = await Promise.allSettled(tasks)
-  console.log(result, filesPath)
-}
-
-function init({ pathLike, ext, output }) {
+/**
+ * @description 格式化入参，输出 输入文件路径、导出文件路径
+ * @param {Object} { pathLike, output }
+ * @returns
+ */
+function init({ pathLike, output }) {
+  if (typeof pathLike !=='string') {
+    throw new TypeError(`"pathLike" should be string`)
+  }
   if (output && !fs.pathExistsSync(output)) {
     fs.ensureDirSync(output)
   }
-  let filesPath = fs.readdirSync(pathLike, { encoding: 'utf8' })
-    .map(item => path.resolve(pathLike, item))
-    .filter(item => fs.statSync(item).isFile() && path.extname(item).includes(ext))
+  let filesPath = []
+  if (isFile(pathLike)) {
+    filesPath = [pathLike]
+  } else if (isDirectory(pathLike)) {
+    filesPath = fs.readdirSync(pathLike, { encoding: 'utf8' }).map(item => path.resolve(pathLike, item))
+  }
+
+  // 是文件且文件后缀名是支持转换的类型
+  const typeEnum = ['.md']
+  const isVerify = (pathLike) => isFile(pathLike) && typeEnum.includes(path.extname(pathLike))
+
+  return filesPath.filter(isVerify)
     .map(item => {
       return {
         path: item,
@@ -40,11 +53,36 @@ function init({ pathLike, ext, output }) {
         file: path.basename(item)
       }
     })
-
-  return filesPath
 }
 
-async function markdownPdf(type, options) {
+async function activate({ pathLike, output }) {
+  const filesPath = init({ pathLike, output })
+  // filter
+  
+  console.log(filesPath[0])
+  const len = filesPath.length
+  for (let index = 0; index < len; index += 10) {
+    console.log(index)
+    const filterFiles = filesPath.slice(index, index + 10).filter(file => {
+      const { dir, name } = path.parse(file.path)
+      const pdfFile = path.resolve(output, `${name}.pdf`)
+      console.log(pdfFile, fs.existsSync(pdfFile))
+      return !fs.existsSync(pdfFile)
+    })
+    if (!filterFiles.length) {
+      continue
+    } 
+    const tasks = filterFiles.map(item => markdownPdf('pdf', { uri: item.path, output: item.output }))
+    const result = await Promise.allSettled(tasks)
+    console.log(`Done: ${result.length}`)
+    if (index + 10 < len) {
+      console.log('wait')
+      await sleep(5000)
+    }
+  }
+}
+
+async function markdownPdf(type, options = {}) {
   const { uri, output } = options
   try {
     const { name: mdfilename, ext } = path.parse(uri)
