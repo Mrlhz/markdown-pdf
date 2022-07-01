@@ -88,12 +88,8 @@ function readStyles(uri) {
     const highlightStyle = getConfiguration('highlightStyle') || ''
     const ishighlight = getConfiguration('highlight')
     if (ishighlight) {
-      if (highlightStyle) {
-        const css = getConfiguration('highlightStyle') || 'github.css'
-        filename = path.join(workspace, 'node_modules', 'highlight.js', 'styles', css)
-      } else {
-        filename = path.join(stylesPath, 'tomorrow.css');
-      }
+      const highlightStylePath = path.join(workspace, 'node_modules', 'highlight.js', 'styles', highlightStyle)
+      filename = fs.pathExistsSync(highlightStylePath) ? highlightStylePath : path.join(stylesPath, 'tomorrow.css')
       stylesList.push(makeCss(filename))
     }
 
@@ -109,6 +105,21 @@ function readStyles(uri) {
     return stylesList.join('');
   } catch (error) {
     console.log('readStyles()', error);
+  }
+}
+
+async function addStylesheets({ page, highlightStyle } = {}) {
+  const stylesheets = [
+    path.resolve(__dirname, '../../styles/markdown.css'),
+    path.resolve(__dirname, '../../styles/markdown-pdf.css'),
+    // path.resolve(__dirname, './node_modules/highlight.js/styles/intellij-light.css')
+  ]
+  const getPath = p => path.resolve(__dirname, `../../node_modules/highlight.js/styles/${p}`)
+  stylesheets.push(
+    fs.pathExistsSync(getPath(highlightStyle)) ? getPath(highlightStyle) : getPath('intellij-light.css')
+  )
+  for (const stylesheet of stylesheets) {
+    await page.addStyleTag({ path: stylesheet })
   }
 }
 
@@ -135,4 +146,5 @@ module.exports = {
   isFile,
   isDirectory,
   readStyles,
+  addStylesheets
 }

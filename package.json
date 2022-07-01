@@ -22,7 +22,7 @@
     "markdown-it-named-headers": "^0.0.4",
     "markdown-it-plantuml": "^1.4.1",
     "mustache": "^4.2.0",
-    "puppeteer-core": "^15.1.1",
+    "puppeteer-core": "^15.2.0",
     "vscode-uri": "^3.0.3"
   }
 }

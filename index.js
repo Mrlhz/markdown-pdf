@@ -4,17 +4,16 @@ const fs = require('fs-extra')
 const path = require('path')
 
 const puppeteer = require('puppeteer-core')
-const mustache = require('mustache')
 const vscodeUri = require('vscode-uri').URI
 
 const { convertMarkdownToHtml } = require('./app/core/convert-markdown-to-html')
+const { makeHtml } = require('./app/core/make-html')
 const {
-  readFile,
   getText,
   getConfiguration,
-  readStyles,
   isDirectory,
-  isFile
+  isFile,
+  addStylesheets
 } = require('./app/utils/index')
 
 module.exports = {
@@ -97,38 +96,6 @@ async function markdownPdf(type, options = {}) {
 }
 
 /*
- * make html
- */
-function makeHtml(data, uri) {
-  try {
-    // read styles
-    const style = readStyles(uri);
-
-    // get title
-    var title = path.basename(uri);
-
-    // read template
-    var filename = path.join(__dirname, 'template', 'template.html');
-    var template = readFile(filename);
-
-    // read mermaid javascripts
-    var mermaidServer = getConfiguration('mermaidServer') || '';
-    const mermaid = `<script src="${mermaidServer}"></script>`;
-
-    // compile template
-    var view = {
-      title: title,
-      style: style,
-      content: data,
-      mermaid: mermaid
-    };
-    return mustache.render(template, view);
-  } catch (error) {
-    console.log('makeHtml()', error);
-  }
-}
-
-/*
  * export a html to a html file
  */
 function exportHtml(data, filename) {
@@ -168,15 +135,7 @@ async function exportPdf(data, filename, type, uri) {
     const page = await browser.newPage()
     console.log(vscodeUri.file(tmpfilename).toString(), exportFilename)
     await page.goto(vscodeUri.file(path.resolve(__dirname, tmpfilename)).toString(), { waitUntil: 'networkidle0', timeout })
-    // await page.addStyleTag({
-    //   path: path.resolve(__dirname, './styles/markdown.css')
-    // })
-    // await page.addStyleTag({
-    //   path: path.resolve(__dirname, './styles/markdown-pdf.css')
-    // })
-    // await page.addStyleTag({
-    //   path: path.resolve(__dirname, './node_modules/highlight.js/styles/monokai-sublime.css')
-    // })
+    // await addStylesheets({ page, highlightStyle: getConfiguration('highlightStyle') })
     // generate pdf
     // https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#pagepdfoptions
     if (type == 'pdf') {
