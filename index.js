@@ -73,7 +73,7 @@ async function activate({ pathLike, output }) {
     const result = await Promise.allSettled(tasks)
     console.log(`Done: ${result.length}`)
     if (index + 10 < len) {
-      await sleep(5000)
+      await sleep(2000)
     }
   }
   await browser.close()

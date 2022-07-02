@@ -165,11 +165,6 @@
       "default": false,
       "description": "Enable line breaks"
     },
-    "emoji": {
-      "type": "boolean",
-      "default": true,
-      "markdownDescription": "Enable emoji. [Emoji cheat sheet](https://www.webfx.com/tools/emoji-cheat-sheet/)"
-    },
     "executablePath": {
       "type": "string",
       "default": "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
@@ -239,7 +234,7 @@
     },
     "markdown-it-include.enable": {
       "type": "boolean",
-      "default": true,
+      "default": false,
       "description": "Enable markdown-it-include. "
     },
     "mermaidServer": {

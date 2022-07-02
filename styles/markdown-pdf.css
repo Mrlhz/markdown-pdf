@@ -26,10 +26,6 @@ blockquote {
 	border-color: rgba(0, 122, 204, 0.5);
 }
 
-.emoji {
-	height: 1.4em;
-}
-
 code {
 	font-size: 14px;
 	line-height: 19px;

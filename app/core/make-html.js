@@ -4,8 +4,8 @@ const { readFile, getConfiguration, readStyles } = require('../utils/index')
 
 /**
  * @description make html
- * @param {*} data 
- * @param {*} uri 
+ * @param {*} data 经过 markdown-it、highlight.js等插件处理后的HTML内容字符串
+ * @param {*} uri 输入文件路径
  * @returns 
  */
 function makeHtml(data, uri) {

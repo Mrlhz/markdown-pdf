@@ -74,34 +74,9 @@ function convertMarkdownToHtml(filename, type, text) {
   // checkbox
   md.use(require('markdown-it-checkbox'));
 
-  // emoji
-  var emoji_f = setBooleanValue(matterParts.data.emoji, getConfiguration('emoji'))
-  if (emoji_f) {
-    var emojies_defs = require(path.join(__dirname, '../../data', 'emoji.json'))
-    try {
-      var options = {
-        defs: emojies_defs
-      };
-    } catch (error) {
-      statusbarmessage.dispose();
-      console.log('markdown-it-emoji:options', error);
-    }
-    md.use(require('markdown-it-emoji'), options);
-    md.renderer.rules.emoji = function (token, idx) {
-      var emoji = token[idx].markup;
-      var emojipath = path.join(__dirname, 'node_modules', 'emoji-images', 'pngs', emoji + '.png');
-      var emojidata = readFile(emojipath, null).toString('base64');
-      if (emojidata) {
-        return '<img class="emoji" alt="' + emoji + '" src="data:image/png;base64,' + emojidata + '" />';
-      } else {
-        return ':' + emoji + ':';
-      }
-    };
-  }
-
   // toc
   // https://github.com/leff/markdown-it-named-headers
-  var options = {
+  const options = {
     slugify: Slug
   }
   md.use(require('markdown-it-named-headers'), options);
@@ -123,7 +98,7 @@ function convertMarkdownToHtml(filename, type, text) {
 
   // PlantUML
   // https://github.com/gmunguia/markdown-it-plantuml
-  var plantumlOptions = {
+  const plantumlOptions = {
     openMarker: matterParts.data.plantumlOpenMarker || getConfiguration('plantumlOpenMarker') || '@startuml',
     closeMarker: matterParts.data.plantumlCloseMarker || getConfiguration('plantumlCloseMarker') || '@enduml',
     server: getConfiguration('plantumlServer') || ''
