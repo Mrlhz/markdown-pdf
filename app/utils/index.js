@@ -69,7 +69,7 @@ function makeCss(filename) {
 
 const stylesPath = path.resolve(__dirname, '../../styles')
 const workspace = path.resolve(__dirname, '../../')
-function readStyles(uri) {
+function readStyles() {
   console.log({ stylesPath, workspace }, __dirname)
   try {
     let filename = '';

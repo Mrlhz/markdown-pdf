@@ -11,7 +11,7 @@ const { readFile, getConfiguration, readStyles } = require('../utils/index')
 function makeHtml(data, uri) {
   try {
     // read styles
-    const style = readStyles(uri);
+    const style = readStyles()
 
     // get title
     var title = path.basename(uri);

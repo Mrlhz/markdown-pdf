@@ -3,11 +3,9 @@
 const fs = require('fs-extra')
 const path = require('path')
 
-const puppeteer = require('puppeteer-core')
 const vscodeUri = require('vscode-uri').URI
 
-const { convertMarkdownToHtml } = require('./app/core/convert-markdown-to-html')
-const { makeHtml } = require('./app/core/make-html')
+const { launch, makeHtml, convertMarkdownToHtml } = require('./app/core/index')
 const {
   getText,
   getConfiguration,
@@ -67,31 +65,32 @@ async function activate({ pathLike, output }) {
   })
 
   console.log({ filterFiles })
+  const browser = await launch()
   const len = filterFiles.length
   for (let index = 0; index < len; index += 10) {
     console.log(index)
-    const tasks = filterFiles.slice(0, index + 10).map(item => markdownPdf('pdf', { uri: item.path, output: item.output }))
+    const tasks = filterFiles.slice(0, index + 10).map(item => markdownPdf('pdf', { browser, uri: item.path, output: item.output }))
     const result = await Promise.allSettled(tasks)
     console.log(`Done: ${result.length}`)
     if (index + 10 < len) {
       await sleep(5000)
     }
   }
+  await browser.close()
 }
 
 async function markdownPdf(type, options = {}) {
-  const { uri, output } = options
+  const { browser, uri, output } = options
   try {
     const { name: mdfilename, ext } = path.parse(uri)
     var types_format = ['html', 'pdf', 'png', 'jpeg']
-    var filename = path.resolve(output, `${mdfilename}.${type}`) // export
+    var exportFileName = path.resolve(output, `${mdfilename}.${type}`) // export
     // convert and export markdown to pdf, html, png, jpeg
     var text = getText(uri)
     var content = convertMarkdownToHtml(mdfilename, type, text)
     var html = makeHtml(content, uri)
-    console.log({filename, type, uri, ext})
-    await exportPdf(html, filename, type, uri) // TODO
-
+    console.log({exportFileName, type, uri, ext})
+    await exportPdf({ browser, html, exportFileName, type }) // TODO
   } catch (error) {
     console.log('markdownPdf()', error)
   }
@@ -111,32 +110,25 @@ function exportHtml(data, filename) {
 /*
  * export a html to a pdf file (html-pdf)
  */
-async function exportPdf(data, filename, type, uri) {
+async function exportPdf(exportOptions = {}) {
+  const { browser, html, exportFileName, type } = exportOptions
   const timeout = getConfiguration('timeout')
-  var exportFilename = path.resolve(__dirname, './sample', filename) // getOutputDir(filename, uri)
   try {
     // export html
     if (type == 'html') {
-      exportHtml(data, exportFilename)
-      console.log('$(markdown) ', { exportFilename, timeout })
+      exportHtml(html, exportFileName) // TODO
+      console.log('$(markdown) ', { exportFileName, timeout })
       return
     }
 
     // create temporary file
-    var f = path.parse(filename)
-    var tmpfilename = path.join(f.dir, f.name + '_tmp.html')
-    exportHtml(data, tmpfilename)
-    const options = {
-      executablePath: getConfiguration('executablePath') || puppeteer.executablePath(),
-      args: ['--lang=zh-cn', '--no-sandbox', '--disable-setuid-sandbox'],
-      headless: true // must
-      // Setting Up Chrome Linux Sandbox
-      // https://github.com/puppeteer/puppeteer/blob/master/docs/troubleshooting.md#setting-up-chrome-linux-sandbox
-    };
-    const browser = await puppeteer.launch(options) // TODO
+    const { dir, name } = path.parse(exportFileName)
+    const tmpfilename = path.join(dir, name + '_tmp.html')
+    exportHtml(html, tmpfilename)
     const page = await browser.newPage()
-    console.log(vscodeUri.file(tmpfilename).toString(), exportFilename)
-    await page.goto(vscodeUri.file(path.resolve(__dirname, tmpfilename)).toString(), { waitUntil: 'networkidle0', timeout })
+    const url = vscodeUri.file(tmpfilename).toString()
+    console.log({ url, exportFileName, tmpfilename })
+    await page.goto(url, { waitUntil: 'networkidle0', timeout })
     // await addStylesheets({ page, highlightStyle: getConfiguration('highlightStyle') })
     // generate pdf
     // https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#pagepdfoptions
@@ -145,11 +137,15 @@ async function exportPdf(data, filename, type, uri) {
       // In order to set the default value of page size to A4, we changed it from the specification of puppeteer.
       const customWidth = { width: '1680' || '', format: '' }
       const pdfOptions = {
-        path: exportFilename,
+        path: exportFileName,
         ...pdfDefaultOptions,
         // ...customWidth
       }
-      await page.pdf(pdfOptions);
+      await page.evaluate(({ name }) => {
+        document.title = name
+      }, { name }) // 自定义 document title
+
+      await page.pdf(pdfOptions)
     }
 
     // generate png and jpeg
@@ -172,7 +168,7 @@ async function exportPdf(data, filename, type, uri) {
       let screenshotOptions;
       if (clip_x_option !== null && clip_y_option !== null && clip_width_option !== null && clip_height_option !== null) {
         screenshotOptions = {
-          path: exportFilename,
+          path: exportFileName,
           quality: quality_option,
           fullPage: false,
           clip: {
@@ -185,7 +181,7 @@ async function exportPdf(data, filename, type, uri) {
         }
       } else {
         screenshotOptions = {
-          path: exportFilename,
+          path: exportFileName,
           quality: quality_option,
           fullPage: true,
           omitBackground: vscode.workspace.getConfiguration('markdown-pdf')['omitBackground'],
@@ -195,7 +191,6 @@ async function exportPdf(data, filename, type, uri) {
     }
 
     await page.close();
-    await browser.close();
 
     // delete temporary file
     var debug = getConfiguration('debug') || false;
@@ -205,7 +200,7 @@ async function exportPdf(data, filename, type, uri) {
       }
     }
 
-    console.log('$(markdown) end: ' + exportFilename, timeout);
+    console.log('$(markdown) end: ' + exportFileName, timeout)
   } catch (error) {
     console.log('exportPdf()', error);
   }
