@@ -16,6 +16,8 @@ const {
   addStylesheets
 } = require('./app/utils/index')
 
+const pdfDefaultOptions = require('./app/config/pdf-options')
+
 module.exports = {
   activate,
   init
@@ -141,37 +143,11 @@ async function exportPdf(data, filename, type, uri) {
     if (type == 'pdf') {
       // If width or height option is set, it overrides the format option.
       // In order to set the default value of page size to A4, we changed it from the specification of puppeteer.
-      var width_option = getConfiguration('width') || ''
-      var height_option = getConfiguration('height') || ''
-      var format_option = ''
-      if (!width_option && !height_option) {
-        format_option = getConfiguration('format', uri) || 'A4'
-      }
-      var landscape_option;
-      if (getConfiguration('orientation', uri) === 'landscape') {
-        landscape_option = true;
-      } else {
-        landscape_option = false;
-      }
+      const customWidth = { width: '1680' || '', format: '' }
       const pdfOptions = {
         path: exportFilename,
-        scale: getConfiguration('scale', uri),
-        displayHeaderFooter: getConfiguration('displayHeaderFooter', uri),
-        headerTemplate: getConfiguration('headerTemplate', uri) || '',
-        footerTemplate: getConfiguration('footerTemplate', uri) || '',
-        printBackground: getConfiguration('printBackground', uri),
-        landscape: landscape_option,
-        pageRanges: getConfiguration('pageRanges', uri) || '',
-        format: format_option,
-        width: getConfiguration('width', uri)['width'] || '',
-        // width: '1680' || getConfiguration('width', uri)['width'] || '',
-        height: getConfiguration('height', uri)['height'] || '',
-        margin: {
-          top: getConfiguration('margin.top', uri) || '',
-          right: getConfiguration('margin.right', uri) || '',
-          bottom: getConfiguration('margin.bottom', uri) || '',
-          left: getConfiguration('margin.left', uri) || ''
-        }
+        ...pdfDefaultOptions,
+        // ...customWidth
       }
       await page.pdf(pdfOptions);
     }
