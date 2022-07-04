@@ -11,6 +11,7 @@ const {
   getConfiguration,
   isDirectory,
   isFile,
+  sleep,
   addStylesheets
 } = require('./app/utils/index')
 
@@ -27,7 +28,7 @@ module.exports = {
  * @returns
  */
 function init({ pathLike, output }) {
-  if (typeof pathLike !=='string') {
+  if (typeof pathLike !== 'string') {
     throw new TypeError(`"pathLike" should be string`)
   }
   if (output && !fs.pathExistsSync(output)) {
@@ -54,14 +55,14 @@ function init({ pathLike, output }) {
     })
 }
 
-async function activate({ pathLike, output }) {
+async function activate({ pathLike, output, overwrite = false }) {
   const filesPath = init({ pathLike, output })
   // filter
   const filterFiles = filesPath.filter(file => {
     const { name } = path.parse(file.path)
     const pdfFile = path.resolve(output, `${name}.pdf`)
     console.log(pdfFile, fs.existsSync(pdfFile) ? 'Already exists' : 'Not created')
-    return !fs.existsSync(pdfFile)
+    return overwrite || !fs.existsSync(pdfFile)
   })
 
   console.log({ filterFiles })
@@ -194,10 +195,8 @@ async function exportPdf(exportOptions = {}) {
 
     // delete temporary file
     var debug = getConfiguration('debug') || false;
-    if (!debug) {
-      if (fs.pathExistsSync(tmpfilename)) {
-        fs.removeSync(tmpfilename)
-      }
+    if (!debug && fs.pathExistsSync(tmpfilename)) {
+      fs.removeSync(tmpfilename)
     }
 
     console.log('$(markdown) end: ' + exportFileName, timeout)
