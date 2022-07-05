@@ -170,48 +170,6 @@
       "default": "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
       "description": "Path to a Chromium or Chrome executable to run instead of the bundled Chromium."
     },
-    "quality": {
-      "type": "number",
-      "default": 100,
-      "description": "jpeg only. The quality of the image, between 0-100. Not applicable to png images."
-    },
-    "clip.x": {
-      "type": [
-        "number",
-        "null"
-      ],
-      "default": "",
-      "description": "png and jpeg only. x-coordinate of top-left corner of clip area."
-    },
-    "clip.y": {
-      "type": [
-        "number",
-        "null"
-      ],
-      "default": "",
-      "description": "png and jpeg only. y-coordinate of top-left corner of clip area."
-    },
-    "clip.width": {
-      "type": [
-        "number",
-        "null"
-      ],
-      "default": "",
-      "description": "png and jpeg only. width of clipping area."
-    },
-    "clip.height": {
-      "type": [
-        "number",
-        "null"
-      ],
-      "default": "",
-      "description": "png and jpeg only. height of clipping area."
-    },
-    "omitBackground": {
-      "type": "boolean",
-      "default": false,
-      "description": "png and jpeg only. Hides default white background and allows capturing screenshots with transparency."
-    },
     "plantumlOpenMarker": {
       "type": "string",
       "default": "@startuml",
@@ -241,6 +199,11 @@
       "type": "string",
       "default": "https://unpkg.com/mermaid/dist/mermaid.min.js",
       "description": "mermaid server."
+    },
+    "debug": {
+      "type": "boolean",
+      "default": false,
+      "description": "调试模式下，不删除临时文件。默认 false 删除"
     }
   }
 }

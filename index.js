@@ -16,6 +16,7 @@ const {
 } = require('./app/utils/index')
 
 const pdfDefaultOptions = require('./app/config/pdf-options')
+const screenshotDefaultOptions = require('./app/config/screenshot-options')
 
 module.exports = {
   activate,
@@ -55,14 +56,14 @@ function init({ pathLike, output }) {
     })
 }
 
-async function activate({ pathLike, output, overwrite = false }) {
+async function activate({ pathLike, output, type = 'pdf', overwrite = false }) {
   const filesPath = init({ pathLike, output })
   // filter
   const filterFiles = filesPath.filter(file => {
     const { name } = path.parse(file.path)
-    const pdfFile = path.resolve(output, `${name}.pdf`)
-    console.log(pdfFile, fs.existsSync(pdfFile) ? 'Already exists' : 'Not created')
-    return overwrite || !fs.existsSync(pdfFile)
+    const outputFile = path.resolve(output, `${name}.${type}`)
+    console.log(outputFile, fs.existsSync(outputFile) ? 'Already exists' : 'Not created')
+    return overwrite || !fs.existsSync(outputFile)
   })
 
   console.log({ filterFiles })
@@ -70,7 +71,7 @@ async function activate({ pathLike, output, overwrite = false }) {
   const len = filterFiles.length
   for (let index = 0; index < len; index += 10) {
     console.log(index)
-    const tasks = filterFiles.slice(0, index + 10).map(item => markdownPdf('pdf', { browser, uri: item.path, output: item.output }))
+    const tasks = filterFiles.slice(0, index + 10).map(item => markdownPdf(type, { browser, uri: item.path, output: item.output }))
     const result = await Promise.allSettled(tasks)
     console.log(`Done: ${result.length}`)
     if (index + 10 < len) {
@@ -84,7 +85,6 @@ async function markdownPdf(type, options = {}) {
   const { browser, uri, output } = options
   try {
     const { name: mdfilename, ext } = path.parse(uri)
-    var types_format = ['html', 'pdf', 'png', 'jpeg']
     var exportFileName = path.resolve(output, `${mdfilename}.${type}`) // export
     // convert and export markdown to pdf, html, png, jpeg
     var text = getText(uri)
@@ -116,7 +116,7 @@ async function exportPdf(exportOptions = {}) {
   const timeout = getConfiguration('timeout')
   try {
     // export html
-    if (type == 'html') {
+    if (type === 'html') {
       exportHtml(html, exportFileName) // TODO
       console.log('$(markdown) ', { exportFileName, timeout })
       return
@@ -133,7 +133,7 @@ async function exportPdf(exportOptions = {}) {
     // await addStylesheets({ page, highlightStyle: getConfiguration('highlightStyle') })
     // generate pdf
     // https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#pagepdfoptions
-    if (type == 'pdf') {
+    if (type === 'pdf') {
       // If width or height option is set, it overrides the format option.
       // In order to set the default value of page size to A4, we changed it from the specification of puppeteer.
       const customWidth = { width: '1680' || '', format: '' }
@@ -150,47 +150,19 @@ async function exportPdf(exportOptions = {}) {
     }
 
     // generate png and jpeg
-    // https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#pagescreenshotoptions
-    if (type == 'png' || type == 'jpeg') {
-      // Quality options do not apply to PNG images.
-      var quality_option;
-      if (type == 'png') {
-        quality_option = undefined;
-      }
-      if (type == 'jpeg') {
-        quality_option = getConfiguration('quality')['quality'] || 100
-      }
-
+    if (['png', 'jpeg'].includes(type)) {
+      // https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#pagescreenshotoptions
       // screenshot size
-      var clip_x_option = vscode.workspace.getConfiguration('markdown-pdf')['clip']['x'] || null;
-      var clip_y_option = vscode.workspace.getConfiguration('markdown-pdf')['clip']['y'] || null;
-      var clip_width_option = vscode.workspace.getConfiguration('markdown-pdf')['clip']['width'] || null;
-      var clip_height_option = vscode.workspace.getConfiguration('markdown-pdf')['clip']['height'] || null;
-      let screenshotOptions;
-      if (clip_x_option !== null && clip_y_option !== null && clip_width_option !== null && clip_height_option !== null) {
-        screenshotOptions = {
-          path: exportFileName,
-          quality: quality_option,
-          fullPage: false,
-          clip: {
-            x: clip_x_option,
-            y: clip_y_option,
-            width: clip_width_option,
-            height: clip_height_option,
-          },
-          omitBackground: vscode.workspace.getConfiguration('markdown-pdf')['omitBackground'],
-        }
-      } else {
-        screenshotOptions = {
-          path: exportFileName,
-          quality: quality_option,
-          fullPage: true,
-          omitBackground: vscode.workspace.getConfiguration('markdown-pdf')['omitBackground'],
-        }
+      const { clip, quality } = screenshotDefaultOptions
+      let screenshotOptions = {
+        ...screenshotDefaultOptions,
+        fullPage: clip ? false : true,
+        quality: type === 'jpeg' ? quality || 100 : undefined,
+        path: exportFileName,
       }
+      
       await page.screenshot(screenshotOptions);
     }
-
     await page.close();
 
     // delete temporary file
