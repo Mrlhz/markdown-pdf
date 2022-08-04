@@ -32,6 +32,9 @@ function init({ pathLike, output }) {
   if (typeof pathLike !== 'string') {
     throw new TypeError(`"pathLike" should be string`)
   }
+  if (pathLike && !fs.pathExistsSync(pathLike)) {
+    throw new TypeError(`"pathLike": no such file or directory`)
+  }
   if (output && !fs.pathExistsSync(output)) {
     fs.ensureDirSync(output)
   }
@@ -71,7 +74,7 @@ async function activate({ pathLike, output, type = 'pdf', overwrite = false }) {
   const len = filterFiles.length
   for (let index = 0; index < len; index += 10) {
     console.log(index)
-    const tasks = filterFiles.slice(0, index + 10).map(item => markdownPdf(type, { browser, uri: item.path, output: item.output }))
+    const tasks = filterFiles.slice(index, index + 10).map(item => markdownPdf(type, { browser, uri: item.path, output: item.output }))
     const result = await Promise.allSettled(tasks)
     console.log(`Done: ${result.length}`)
     if (index + 10 < len) {
@@ -88,7 +91,7 @@ async function markdownPdf(type, options = {}) {
     var exportFileName = path.resolve(output, `${mdfilename}.${type}`) // export
     // convert and export markdown to pdf, html, png, jpeg
     var text = getText(uri)
-    var content = convertMarkdownToHtml(mdfilename, type, text)
+    var content = convertMarkdownToHtml(uri, type, text)
     var html = makeHtml(content, uri)
     console.log({exportFileName, type, uri, ext})
     await exportPdf({ browser, html, exportFileName, type }) // TODO

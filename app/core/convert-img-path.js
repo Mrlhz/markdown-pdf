@@ -1,7 +1,7 @@
 const url = require('url')
 const path = require('path')
 
-function convertImgPath(src, filename) {
+function convertImgPath(src, filePath) {
   try {
     var href = decodeURIComponent(src);
     href = href.replace(/("|')/g, '')
@@ -13,7 +13,7 @@ function convertImgPath(src, filename) {
     } else if (protocol === 'file:') {
       return href;
     } else if (!protocol || path.isAbsolute(href)) {
-      href = path.resolve(path.dirname(filename), href).replace(/\\/g, '/').replace(/#/g, '%23');
+      href = path.resolve(path.dirname(filePath), href).replace(/\\/g, '/').replace(/#/g, '%23');
       if (href.indexOf('//') === 0) {
         return 'file:' + href;
       } else if (href.indexOf('/') === 0) {

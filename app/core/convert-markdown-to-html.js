@@ -9,7 +9,7 @@ const { Slug, setBooleanValue, getConfiguration, readFile } = require('../utils/
 /*
  * convert markdown to html (markdown-it)
  */
-function convertMarkdownToHtml(filename, type, text) {
+function convertMarkdownToHtml(filePath, type, text) {
   const matterParts = grayMatter(text)
 
   try {
@@ -49,7 +49,7 @@ function convertMarkdownToHtml(filename, type, text) {
     if (type === 'html') {
       href = decodeURIComponent(href).replace(/("|')/g, '')
     } else {
-      href = convertImgPath(href, filename)
+      href = convertImgPath(href, filePath)
     }
     // console.log("converted href: " + href);
     token.attrs[token.attrIndex('src')][1] = href
@@ -64,7 +64,7 @@ function convertMarkdownToHtml(filename, type, text) {
       var $ = cheerio.load(html);
       $('img').each(function () {
         var src = $(this).attr('src');
-        var href = convertImgPath(src, filename);
+        var href = convertImgPath(src, filePath);
         $(this).attr('src', href);
       });
       return $.html();
@@ -111,7 +111,7 @@ function convertMarkdownToHtml(filename, type, text) {
   // https://talk.commonmark.org/t/transclusion-or-including-sub-documents-for-reuse/270/13
   if (getConfiguration('markdown-it-include.enable')) {
     md.use(require("markdown-it-include"), {
-      root: path.dirname(filename),
+      root: path.dirname(filePath),
       includeRe: /:\[.+\]\((.+\..+)\)/i
     });
   }
