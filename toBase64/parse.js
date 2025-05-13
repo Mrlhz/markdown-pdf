@@ -29,9 +29,31 @@ async function parse(filePath) {
     }
   }
 
+  const links = [...document.querySelectorAll('link[rel="stylesheet"]')];
+  for (const link of links) {
+    const href = link.getAttribute('href');
+    const stylePath = path.resolve(dir, href);
+    if (fs.existsSync(stylePath)) {
+      const stylesheet = await readFile(stylePath, 'utf-8');
+      try {
+        document.head.appendChild(createStyle(document, stylesheet));
+        link.remove();
+      } catch (error) {
+        console.log(error)
+      }
+    }
+  }
+
   const data = document.documentElement.innerHTML;
   await writeFile(`${name}${ext}`, data);
 
+}
+
+function createStyle(document, stylesheet) {
+  const style = document.createElement('style');
+  style.innerHTML = stylesheet;
+
+  return style;
 }
 
 async function batch(files = []) {
@@ -40,13 +62,7 @@ async function batch(files = []) {
   }
 }
 
-
-// parse('D:/Downloads/xxx.html')
-
-const dir = 'D:/Downloads/xxx';
-
-const files = fs.readdirSync(dir).map(file => path.resolve(dir, file)).filter(filePath => {
-  return fs.lstatSync(filePath).isFile() && path.parse(filePath).ext === '.html'
-});
-
-batch(files);
+module.exports = {
+  parse,
+  batch
+}
