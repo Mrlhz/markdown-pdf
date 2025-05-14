@@ -51,7 +51,8 @@ async function parse(filePath) {
 
 function createStyle(document, stylesheet) {
   const style = document.createElement('style');
-  style.innerHTML = stylesheet;
+  // style.innerHTML = stylesheet;
+  style.append(document.createTextNode(stylesheet));
 
   return style;
 }
